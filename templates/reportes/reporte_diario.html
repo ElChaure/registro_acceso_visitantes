@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Reporte Diario{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Reporte Diario de Visitas</h4>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha</label>
+                            <input type="date" name="fecha" class="form-control" value="{{ fecha|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Filtrar
+                            </button>
+                        </div>
+                        <div class="col-md-6 text-end d-flex align-items-end justify-content-end">
+                            <a href="{% url 'reportes:exportar_excel' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-success me-2">
+                                <i class="fas fa-file-excel"></i> Exportar Excel
+                            </a>
+                            <a href="{% url 'reportes:exportar_pdf' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-danger">
+                                <i class="fas fa-file-pdf"></i> Exportar PDF
+                            </a>
+                        </div>
+                    </form>
+                    
+                    <!-- Stats Cards -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body">
+                                    <h6 class="mb-0">Total Visitas</h6>
+                                    <h3 class="mb-0">{{ total_visitas }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body">
+                                    <h6 class="mb-0">Activas</h6>
+                                    <h3 class="mb-0">{{ visitas_activas }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-secondary text-white">
+                                <div class="card-body">
+                                    <h6 class="mb-0">Finalizadas</h6>
+                                    <h3 class="mb-0">{{ visitas_finalizadas }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body">
+                                    <h6 class="mb-0">Visitantes Únicos</h6>
+                                    <h3 class="mb-0">{{ visitantes_unicos }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Visitas por Hora -->
+                    {% if visitas_por_hora %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5>Visitas por Hora</h5>
+                            <canvas id="visitasPorHoraChart" height="100"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Visitas por Sede -->
+                    {% if visitas_por_sede %}
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Visitas por Sede</h5>
+                            <canvas id="visitasPorSedeChart" height="250"></canvas>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Visitas por Dependencia</h5>
+                            <canvas id="visitasPorDependenciaChart" height="250"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Últimas Visitas -->
+                    <h5 class="mt-4">Últimas Visitas del Día</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Carnet</th>
+                                    <th>Visitante</th>
+                                    <th>Documento</th>
+                                    <th>Sede</th>
+                                    <th>Dependencia</th>
+                                    <th>Persona Solicitada</th>
+                                    <th>Hora Ingreso</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for visita in ultimas_visitas %}
+                                <tr>
+                                    <td><strong>{{ visita.codigo_carnet }}</strong></td>
+                                    <td>{{ visita.visitante.nombre_completo }}</td>
+                                    <td>{{ visita.visitante.documento }}</td>
+                                    <td>{{ visita.sede.nombre }}</td>
+                                    <td>{{ visita.dependencia.nombre }}</td>
+                                    <td>{{ visita.persona_solicitada }}</td>
+                                    <td>{{ visita.fecha_ingreso|date:"H:i:s" }}</td>
+                                    <td>
+                                        {% if visita.estado == 'activo' %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Finalizado</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center">No hay visitas registradas en esta fecha</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Visitas por hora
+    const visitasPorHora = {{ visitas_por_hora|safe }};
+    if (visitasPorHora.length > 0) {
+        const ctx = document.getElementById('visitasPorHoraChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: visitasPorHora.map(item => item.hora),
+                datasets: [{
+                    label: 'Visitas',
+                    data: visitasPorHora.map(item => item.cantidad),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true
+            }
+        });
+    }
+    
+    // Visitas por sede
+    const visitasPorSede = {{ visitas_por_sede|safe }};
+    if (visitasPorSede.length > 0) {
+        const ctx2 = document.getElementById('visitasPorSedeChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: visitasPorSede.map(item => item.sede),
+                datasets: [{
+                    label: 'Visitas',
+                    data: visitasPorSede.map(item => item.visitas),
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgb(54, 162, 235)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Visitas por dependencia
+    const visitasPorDependencia = {{ visitas_por_dependencia|safe }};
+    if (visitasPorDependencia.length > 0) {
+        const ctx3 = document.getElementById('visitasPorDependenciaChart').getContext('2d');
+        new Chart(ctx3, {
+            type: 'pie',
+            data: {
+                labels: visitasPorDependencia.map(item => item.dependencia),
+                datasets: [{
+                    data: visitasPorDependencia.map(item => item.visitas),
+                    backgroundColor: [
+                        'rgb(255, 99, 132)',
+                        'rgb(54, 162, 235)',
+                        'rgb(255, 205, 86)',
+                        'rgb(75, 192, 192)',
+                        'rgb(153, 102, 255)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true
+            }
+        });
+    }
+</script>
+{% endblock %}
+{% endblock %}

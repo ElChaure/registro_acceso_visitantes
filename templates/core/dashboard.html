@@ -1,0 +1,201 @@
+<!-- templates/core/dashboard.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Stats Cards -->
+    <div class="row">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">Visitas Hoy</h6>
+                            <h2 class="mb-0">{{ visitas_hoy }}</h2>
+                        </div>
+                        <i class="fas fa-calendar-day fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">Visitas Activas</h6>
+                            <h2 class="mb-0">{{ visitas_activas }}</h2>
+                        </div>
+                        <i class="fas fa-users fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">Visitantes Únicos</h6>
+                            <h2 class="mb-0">{{ visitantes_hoy }}</h2>
+                        </div>
+                        <i class="fas fa-user-friends fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">Accesos Activos</h6>
+                            <h2 class="mb-0">{{ total_sedes }}</h2>
+                        </div>
+                        <i class="fas fa-building fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="row mt-4">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Visitas por Hora (Hoy)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="visitasPorHoraChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Visitas por Acceso (Hoy)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="visitasPorSedeChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Visits -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Últimas Visitas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Carnet</th>
+                                    <th>Visitante</th>
+                                    <th>Documento</th>
+                                    <th>Acceso</th>
+                                    <th>Dependencia</th>
+                                    <th>Ingreso</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for visita in ultimas_visitas %}
+                                <tr>
+                                    <td><strong>{{ visita.codigo_carnet }}</strong></td>
+                                    <td>{{ visita.visitante.nombre_completo }}</td>
+                                    <td>{{ visita.visitante.documento }}</td>
+                                    <td>{{ visita.sede.nombre }}</td>
+                                    <td>{{ visita.dependencia.nombre }}</td>
+                                    <td>{{ visita.fecha_ingreso|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        {% if visita.estado == 'activo' %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Finalizado</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">No hay visitas registradas</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Gráfico de visitas por hora
+    const visitasPorHora = {{ visitas_por_hora|safe }};
+    if (visitasPorHora.length > 0) {
+        const ctx = document.getElementById('visitasPorHoraChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: visitasPorHora.map(item => item.hora),
+                datasets: [{
+                    label: 'Número de Visitas',
+                    data: visitasPorHora.map(item => item.cantidad),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true
+            }
+        });
+    }
+    
+    // Gráfico de visitas por sede
+    const visitasPorSede = {{ visitas_por_sede|safe }};
+    if (visitasPorSede.length > 0) {
+        const ctx2 = document.getElementById('visitasPorSedeChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: visitasPorSede.map(item => item.nombre),
+                datasets: [{
+                    label: 'Visitas',
+                    data: visitasPorSede.map(item => item.visitas),
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgb(54, 162, 235)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}
+{% endblock %}

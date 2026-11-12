@@ -1,0 +1,225 @@
+<!-- templates/visitantes/registro_visitante.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Registrar Visitante{% endblock %}
+
+{% block extra_css %}
+<style>
+    .camera-container {
+        position: relative;
+        width: 100%;
+        max-width: 320px;
+        margin: 0 auto;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #000;
+    }
+    video, canvas {
+        width: 100%;
+        display: block;
+    }
+    .capture-btn {
+        margin-top: 10px;
+    }
+    #photo-preview {
+        max-width: 100px;
+        margin-top: 10px;
+        border-radius: 50%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Registrar Nuevo Visitante</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="registro-form">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nombre" class="form-label">Nombre *</label>
+                                    <input type="text" name="nombre" id="nombre" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="apellido" class="form-label">Apellido *</label>
+                                    <input type="text" name="apellido" id="apellido" class="form-control" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="documento" class="form-label">Documento de Identidad *</label>
+                                    <input type="text" name="documento" id="documento" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="telefono" class="form-label">Teléfono</label>
+                                    <input type="text" name="telefono" id="telefono" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" name="email" id="email" class="form-control">
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="sede" class="form-label">Acceso *</label>
+                                    <select name="sede" id="sede" class="form-control" required>
+                                        <option value="">Seleccione un acceso</option>
+                                        {% for sede in sedes %}
+                                        <option value="{{ sede.id }}">{{ sede.nombre }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="dependencia" class="form-label">Dependencia *</label>
+                                    <select name="dependencia" id="dependencia" class="form-control" required>
+                                        <option value="">Seleccione una dependencia</option>
+                                        {% for dep in dependencias %}
+                                        <option value="{{ dep.id }}">{{ dep.nombre }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="persona_solicitada" class="form-label">Persona Solicitada *</label>
+                            <input type="text" name="persona_solicitada" id="persona_solicitada" class="form-control" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="observaciones" class="form-label">Observaciones</label>
+                            <textarea name="observaciones" id="observaciones" class="form-control" rows="2"></textarea>
+                        </div>
+                        
+                        <!-- Captura de foto con cámara web -->
+                        <div class="mb-3">
+                            <label class="form-label">Foto del Visitante</label>
+                            <div class="camera-container">
+                                <video id="video" autoplay playsinline></video>
+                                <canvas id="canvas" style="display: none;"></canvas>
+                            </div>
+                            <div class="text-center capture-btn">
+                                <button type="button" id="capture-btn" class="btn btn-primary">
+                                    <i class="fas fa-camera"></i> Tomar Foto
+                                </button>
+                                <button type="button" id="retake-btn" class="btn btn-secondary" style="display: none;">
+                                    <i class="fas fa-redo"></i> Reintentar
+                                </button>
+                            </div>
+                            <div class="text-center mt-2">
+                                <img id="photo-preview" style="display: none;" />
+                            </div>
+                            <input type="hidden" name="foto_base64" id="foto_base64">
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> El código de carnet se generará automáticamente.
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Registrar Visitante
+                            </button>
+                            <a href="{% url 'core:dashboard' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Elementos DOM
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('capture-btn');
+    const retakeBtn = document.getElementById('retake-btn');
+    const photoPreview = document.getElementById('photo-preview');
+    const fotoBase64 = document.getElementById('foto_base64');
+    
+    let stream = null;
+    
+    // Inicializar cámara
+    async function initCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            await video.play();
+        } catch (err) {
+            console.error("Error accediendo a la cámara: ", err);
+            alert("No se pudo acceder a la cámara. Asegúrate de haber concedido permisos y de estar en localhost o HTTPS.");
+        }
+    }
+    
+    // Capturar foto
+    captureBtn.addEventListener('click', () => {
+        const context = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convertir canvas a base64 (formato JPEG)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        fotoBase64.value = dataUrl;
+        
+        // Mostrar previsualización
+        photoPreview.src = dataUrl;
+        photoPreview.style.display = 'block';
+        
+        // Ocultar video, mostrar botón reintentar
+        video.style.display = 'none';
+        captureBtn.style.display = 'none';
+        retakeBtn.style.display = 'inline-block';
+    });
+    
+    // Reintentar (tomar otra foto)
+    retakeBtn.addEventListener('click', () => {
+        // Limpiar foto
+        fotoBase64.value = '';
+        photoPreview.style.display = 'none';
+        
+        // Mostrar video nuevamente
+        video.style.display = 'block';
+        captureBtn.style.display = 'inline-block';
+        retakeBtn.style.display = 'none';
+    });
+    
+    // Iniciar cámara al cargar la página
+    initCamera();
+    
+    // Opcional: si el formulario se envía sin foto, se puede validar
+    document.getElementById('registro-form').addEventListener('submit', function(e) {
+        if (!fotoBase64.value) {
+            e.preventDefault();
+            alert('Debe tomar una foto del visitante.');
+        }
+    });
+</script>
+{% endblock %}

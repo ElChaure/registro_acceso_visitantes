@@ -1,0 +1,172 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Control de Acceso{% endblock %} - {{ institucion_nombre }}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    
+    <!-- Custom CSS -->
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Header Institucional -->
+    <header class="bg-primary text-white py-3">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-2 text-center text-md-start">
+                    {% if institucion_logo %}
+                        <img src="{% static institucion_logo %}" alt="Logo" height="60">
+                    {% else %}
+                        <i class="fas fa-building fa-3x"></i>
+                    {% endif %}
+                </div>
+                <div class="col-md-8 text-center">
+                    <h1 class="h3 mb-0">{{ institucion_nombre }}</h1>
+                    <p class="mb-0 small">Sistema de Control de Acceso</p>
+                </div>
+                <div class="col-md-2 text-center text-md-end">
+                    {% if user.is_authenticated %}
+                        <div class="dropdown">
+                            <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user-circle"></i> {{ user.get_full_name|default:user.username }}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-user"></i> Mi Perfil</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'core:logout' %}"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a></li>
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Navigation -->
+    {% if user.is_authenticated %}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'core:dashboard' %}">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-plus"></i> Visitantes
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'visitantes:registrar' %}">
+                                <i class="fas fa-user-plus"></i> Registrar Visitante</a>
+                            </li>
+                            <li><a class="dropdown-item" href="{% url 'visitantes:devolver' %}">
+                                <i class="fas fa-undo-alt"></i> Devolver Carnet</a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'visitantes:lista_registros_activos' %}">
+                                <i class="fas fa-users"></i> Visitas Activas</a>
+                            </li>
+                            <li><a class="dropdown-item" href="{% url 'visitantes:historial' %}">
+                                <i class="fas fa-history"></i> Historial</a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'visitantes:carnets_faltantes' %}">
+                            <i class="fas fa-exclamation-triangle"></i> Carnets Faltantes
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-chart-bar"></i> Reportes
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'reportes:reporte_diario' %}">
+                                <i class="fas fa-calendar-day"></i> Reporte Diario</a>
+                            </li>
+                            <li><a class="dropdown-item" href="{% url 'reportes:reporte_carnets' %}">
+                                <i class="fas fa-id-card"></i> Reporte Carnets</a>
+                            </li>
+                            <li><a class="dropdown-item" href="{% url 'reportes:estadisticas' %}">
+                                <i class="fas fa-chart-line"></i> Estadísticas</a>
+                            </li>
+                        </ul>
+                    </li>
+                    {% if user.rol == 'administrador' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'core:auditoria' %}">
+                            <i class="fas fa-clipboard-list"></i> Auditoría
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <form class="d-flex" method="GET" action="{% url 'visitantes:lista_visitantes' %}">
+                    <input class="form-control me-2" type="search" name="search" placeholder="Buscar visitante..." value="{{ request.GET.search }}">
+                    <button class="btn btn-outline-light" type="submit">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+    
+    <!-- Messages -->
+    <div class="container mt-3">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+    
+    <!-- Main Content -->
+    <main class="py-4">
+        {% block content %}
+        {% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="bg-light text-center text-muted py-3 mt-5">
+        <div class="container">
+            <p class="mb-0">&copy; {% now "Y" %} {{ institucion_nombre }} - Sistema de Control de Acceso</p>
+            <small>Versión 2.0 | Desarrollado con Django 4.2 y PostgreSQL 12</small>
+        </div>
+    </footer>
+    
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{% static 'js/custom.js' %}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
